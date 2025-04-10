@@ -19,7 +19,7 @@ X_train, X_test, y_train, y_test, criterion, make_optimizer, input_dim = get_sha
 
 class BasicFeedForward(nn.Module):
     def __init__(self, input_dim):
-        super(SimpleNN, self).__init__()
+        super(BasicFeedForward, self).__init__()
         self.model = nn.Sequential(
             nn.Linear(input_dim, 64),
             nn.ReLU(),
@@ -32,7 +32,7 @@ class BasicFeedForward(nn.Module):
     def forward(self, x):
         return self.model(x)
 
-model = SimpleNN(input_dim=input_dim).to(device)
+model = BasicFeedForward(input_dim=input_dim).to(device)
 optimizer = make_optimizer(model)
 
 train_model(model, X_train, y_train, optimizer, criterion, epochs=200)
