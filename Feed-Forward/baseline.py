@@ -14,7 +14,7 @@ from shared.baseline_train import train_model, evaluate_model
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Using device: {device}")
 
-df = pd.read_csv("./Big_Five_Data.csv")
+df = pd.read_csv("./final_5_league.csv")
 
 X_train, X_test, y_train, y_test, criterion, make_optimizer, input_dim = get_shared_components(df, device)
 
