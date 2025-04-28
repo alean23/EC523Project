@@ -77,7 +77,7 @@ class MatchPredictor(nn.Module):
         
         # Combine all features
         combined = torch.cat([
-            home_encoded,  # original projections
+            home_encoded,  
             away_encoded,
             context_features
         ], dim=1)
@@ -86,7 +86,7 @@ class MatchPredictor(nn.Module):
 
 # Usage
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-df = pd.read_csv("../final_combined_with_team_records.csv")
+df = pd.read_csv("../final_5_league.csv")
 components = get_shared_components(df, device)
 
 model = MatchPredictor(input_dim=components['input_dim']).to(device)
