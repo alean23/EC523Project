@@ -92,6 +92,9 @@ components = get_shared_components(df, device)
 model = MatchPredictor(input_dim=components['input_dim']).to(device)
 optimizer = components['make_optimizer'](model)
 
+df['match_date'] = pd.to_datetime(df['match_date'])
+test_dates = df[df['match_date'].dt.year == 2016]['match_date'].values
+
 train_model(
     model,
     components['X_train'],
@@ -105,6 +108,7 @@ evaluate_model(
     model,
     components['X_test'],
     components['y_test'],
-    bookie_probs=components['bookie_test'].cpu().numpy()
+    bookie_probs=components['bookie_test'].cpu().numpy(),
+    match_dates=test_dates
 )
 

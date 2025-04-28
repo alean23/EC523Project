@@ -2,12 +2,19 @@ import torch
 import torch.nn.functional as F
 from sklearn.metrics import precision_recall_fscore_support, confusion_matrix
 import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
 
 def train_model(model, X_train, y_train, optimizer, criterion, epochs=100, batch_size=32, log_every=10):
     model.train()
+    train_losses = []
+    train_accuracies = []
+    
     for epoch in range(epochs):
         permutation = torch.randperm(X_train.size(0))
         epoch_loss = 0
+        correct = 0
+        total = 0
 
         for i in range(0, X_train.size(0), batch_size):
             indices = permutation[i:i+batch_size]
@@ -21,12 +28,45 @@ def train_model(model, X_train, y_train, optimizer, criterion, epochs=100, batch
 
             loss.backward()
             optimizer.step()
+            
             epoch_loss += loss.item()
+            _, predicted = torch.max(outputs.data, 1)
+            total += batch_y.size(0)
+            correct += (predicted == batch_y).sum().item()
+
+        epoch_loss /= len(X_train) / batch_size
+        epoch_acc = correct / total
+        
+        train_losses.append(epoch_loss)
+        train_accuracies.append(epoch_acc)
 
         if epoch % log_every == 0 or epoch == epochs - 1:
-            print(f"[Epoch {epoch}] Loss: {epoch_loss:.4f}")
+            print(f"[Epoch {epoch}] Loss: {epoch_loss:.4f} | Accuracy: {epoch_acc:.4f}")
+    
+    # Plot training curves
+    plt.figure(figsize=(12, 5))
+    
+    plt.subplot(1, 2, 1)
+    plt.plot(train_losses, label='Training Loss')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.title('Training Loss')
+    plt.legend()
+    
+    plt.subplot(1, 2, 2)
+    plt.plot(train_accuracies, label='Training Accuracy')
+    plt.xlabel('Epoch')
+    plt.ylabel('Accuracy')
+    plt.title('Training Accuracy')
+    plt.legend()
+    
+    plt.tight_layout()
+    plt.savefig('training_metrics.png', dpi=300, bbox_inches='tight')
+    
+    return train_losses, train_accuracies
 
-def evaluate_model(model, X, y, bookie_probs=None, initial_bankroll=1000, bet_fraction=0.01, batch_size=32):
+def evaluate_model(model, X, y, bookie_probs=None, initial_bankroll=1000, bet_fraction=0.01, 
+                  batch_size=32, match_dates=None):
     model.eval()
     all_preds = []
     all_true = []
@@ -64,7 +104,8 @@ def evaluate_model(model, X, y, bookie_probs=None, initial_bankroll=1000, bet_fr
             model_probs=all_probs,
             bookie_probs=bookie_probs,
             initial_bankroll=initial_bankroll,
-            bet_fraction=bet_fraction
+            bet_fraction=bet_fraction,
+            match_dates=match_dates
         )
     
     # Combine all results
@@ -141,50 +182,48 @@ def calculate_kl_divergence(model_probs, bookie_probs):
         'kl_divergence': kl_div
     }
 
-def simulate_profits(true_outcomes, model_probs, bookie_probs, initial_bankroll=1000, bet_fraction=0.01):
+def simulate_profits(true_outcomes, model_probs, bookie_probs, initial_bankroll=1000, 
+                    bet_fraction=0.01, match_dates=None):
     """
-    Simulate betting profits over time using Kelly criterion strategy
-    Returns dictionary with metrics and bankroll history
+    Enhanced profit simulation with robust date handling
     """
     bankroll = initial_bankroll
     bankroll_history = [bankroll]
     bets_made = 0
     bets_won = 0
+    bet_records = []  # Store tuples of (date, bankroll)
     
-    # Convert probabilities to decimal odds
     bookie_odds = 1 / bookie_probs
     
     for i in range(len(true_outcomes)):
-        # Only bet when our model's probability is higher than bookmaker's implied probability
         value_bets = model_probs[i] > bookie_probs[i]
         
         if not any(value_bets):
-            bankroll_history.append(bankroll)
+            if match_dates is not None and i < len(match_dates):
+                bet_records.append((match_dates[i], bankroll))
             continue
-        
-        # For each outcome where we have value
+            
         for outcome in np.where(value_bets)[0]:
-            # Calculate stake using fractional Kelly
-            p = model_probs[i, outcome]  # Our estimated probability
-            b = bookie_odds[i, outcome] - 1  # Bookie odds (minus 1 for net profit)
-            q = bookie_probs[i, outcome]  # Bookie's implied probability
-            f = (p * (b + 1) - 1) / b  # Kelly criterion fraction
+            p = model_probs[i, outcome]
+            b = bookie_odds[i, outcome] - 1
+            f = (p * (b + 1) - 1) / b
             stake = bankroll * bet_fraction * f
             
-            if stake < 1:  # Minimum bet size
+            if stake < 1:
                 continue
                 
             bets_made += 1
             if true_outcomes[i] == outcome:
-                # We won this bet
-                winnings = stake * bookie_odds[i, outcome]
-                bankroll += winnings - stake
+                bankroll += stake * b
                 bets_won += 1
             else:
-                # We lost this bet
                 bankroll -= stake
             
-            bankroll_history.append(bankroll)
+            if match_dates is not None and i < len(match_dates):
+                bet_records.append((match_dates[i], bankroll))
+
+    print(match_dates)
+    print(bankroll)
     
     # Calculate metrics
     total_return = bankroll - initial_bankroll
@@ -200,6 +239,32 @@ def simulate_profits(true_outcomes, model_probs, bookie_probs, initial_bankroll=
     print(f"{'Bets Won:':<20} {bets_won}")
     print(f"{'Win Rate:':<20} {win_rate:.2%}")
     
+    # Plotting with duplicate date handling
+    if match_dates is not None and bet_records:
+        plt.figure(figsize=(12, 6))
+        
+        # Create DataFrame and handle duplicates
+        df = pd.DataFrame(bet_records, columns=['date', 'balance'])
+        
+        # Convert to datetime if needed
+        if not pd.api.types.is_datetime64_any_dtype(df['date']):
+            df['date'] = pd.to_datetime(df['date'])
+        
+        # Remove duplicates by keeping last balance for each date
+        df = df.drop_duplicates('date', keep='last')
+        
+        # Sort by date and plot
+        df = df.sort_values('date')
+        plt.plot(df['date'], df['balance'], label='Bankroll')
+        plt.axhline(y=initial_bankroll, color='r', linestyle='--', label='Initial Bankroll')
+        plt.xlabel('Date')
+        plt.ylabel('Bankroll ($)')
+        plt.title('Betting Performance Over Time')
+        plt.legend()
+        plt.grid(True)
+        plt.tight_layout()
+        plt.savefig('betting_performance.png', dpi=300, bbox_inches='tight')
+
     return {
         'final_bankroll': bankroll,
         'total_profit': total_return,
@@ -207,5 +272,6 @@ def simulate_profits(true_outcomes, model_probs, bookie_probs, initial_bankroll=
         'bets_made': bets_made,
         'bets_won': bets_won,
         'win_rate': win_rate,
-        'bankroll_history': bankroll_history
+        'bankroll_history': bankroll_history,
+        'bet_records': bet_records
     }
