@@ -1,7 +1,34 @@
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 import torch
-import torch.nn as nn
+import torch.nn as 
+
+def train_test_split_by_season(df, feature_columns, target_column='season'):
+    """
+    Splits the DataFrame into train and test sets based on the 'season' column.
+    Seasons '2008/2009' to '2013/2014' go to train, '2014/2015' and '2015/2016' go to test.
+    
+    Args:
+        df (pd.DataFrame): Input DataFrame.
+        feature_columns (list): List of columns to use as features (X).
+        target_column (str): Column to use as target (y).
+        
+    Returns:
+        X_train, X_test, y_train, y_test (all pd.DataFrame or pd.Series)
+    """
+    train_seasons = ['2008/2009', '2009/2010', '2010/2011', '2011/2012', '2012/2013', '2013/2014']
+    test_seasons = ['2014/2015', '2015/2016']
+    
+    train_mask = df['season'].isin(train_seasons)
+    test_mask = df['season'].isin(test_seasons)
+    
+    X_train = df.loc[train_mask, feature_columns]
+    y_train = df.loc[train_mask, target_column]
+    
+    X_test = df.loc[test_mask, feature_columns]
+    y_test = df.loc[test_mask, target_column]
+    
+    return X_train, X_test, y_train, y_test
 
 def get_shared_components(df, device, input_tensor=True):
 
