@@ -38,3 +38,17 @@ final_teams = sorted(list(teams_in_both_last_two & teams_in_4_of_6))
 print("Teams playing in both test seasons and 4/6 train seasons:")
 print(final_teams)
 
+import pandas as pd
+
+allowed_teams = [
+    'Valencia CF', 'RCD Espanyol', 'Athletic Club de Bilbao',
+    'Atlético Madrid', 'Sevilla FC', 'Real Madrid CF',
+    'FC Barcelona', 'Getafe CF', 'Málaga CF'
+]
+
+# Replace with the actual path to your file if needed
+df_test  = df[df['season'].isin(test_seasons)]
+
+mask = df_test['home_team_name'].isin(allowed_teams) & df_test['away_team_name'].isin(allowed_teams)
+count = mask.sum()
+print(f"Rows with both teams in allowed_teams: {count}")
