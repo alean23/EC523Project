@@ -16,26 +16,58 @@ print(f"Using device: {device}")
 
 df = pd.read_csv("./final_5_league.csv")
 
-X_train, X_test, y_train, y_test, criterion, make_optimizer, input_dim = get_shared_components(df, device)
-
 # Define the model
 class MyModel(nn.Module):
     def __init__(self, input_shape):
         super(MyModel, self).__init__()
-        self.fc1 = nn.Linear(input_shape, 64)
-        self.fc2 = nn.Linear(64, 32)
-        self.fc3 = nn.Linear(32, 3)  # 3 output classes
+
+        self.net = nn.Sequential(
+            nn.Linear(input_shape, 128),
+            nn.LayerNorm(128),
+            nn.ReLU(),
+            nn.Dropout(0.3),
+
+            nn.Linear(128, 64),
+            nn.ReLU(),
+
+            nn.Linear(64, 32),
+            nn.ReLU(),
+
+            nn.Linear(32, 16),
+            nn.LayerNorm(16),
+            nn.ReLU(),
+
+            nn.Linear(16, 3),  # Final layer, no dropout or activation
+        )
 
     def forward(self, x):
-        x = torch.relu(self.fc1(x))
-        x = torch.relu(self.fc2(x))
-        x = torch.softmax(self.fc3(x), dim=1)  # Softmax along classes
-        return x
-input_shape = X_train.shape[1]
-model = MyModel(input_shape)
+        x = self.net(x)
+        return torch.softmax(x, dim=1)  # Output probabilities
+    
+# Usage
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+df = pd.read_csv("./final_5_league.csv")
+components = get_shared_components(df, device)
 
-criterion = nn.CrossEntropyLoss()  # Note: expects class indices if labels are not one-hot
-optimizer = optim.Adam(model.parameters(), lr=0.001)
+model = MyModel(input_shape=components['input_dim']).to(device)
+optimizer = components['make_optimizer'](model)
 
-train_model(model, X_train, y_train, optimizer, criterion, epochs=200)
-evaluate_model(model, X_test, y_test)
+df['match_date'] = pd.to_datetime(df['match_date'])
+test_dates = df[df['match_date'].dt.year == 2016]['match_date'].values
+
+train_model(
+    model,
+    components['X_train'],
+    components['y_train'],
+    optimizer,
+    components['criterion'],
+    epochs=200
+)
+
+evaluate_model(
+    model,
+    components['X_test'],
+    components['y_test'],
+    bookie_probs=components['bookie_test'].cpu().numpy(),
+    match_dates=test_dates
+)
