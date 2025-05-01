@@ -24,13 +24,25 @@ def get_shared_components(df, device, input_tensor=True, test_year=2016):
     train = df[df['match_date'].dt.year < test_year].copy()
     test = df[df['match_date'].dt.year == test_year].copy()
     
+    
     # Extract features safely
-    player_rating_cols = [col for col in df.columns if "rating" in col and "player" in col]
-    player_potential_cols = [col for col in df.columns if "potential" in col and "player" in col]
+    #player_rating_cols = [col for col in df.columns if "rating" in col and "player" in col]
+    #player_potential_cols = [col for col in df.columns if "potential" in col and "player" in col]
+
+    player_attr_cols = [col for col in df.columns 
+                   if any(x in col for x in ['rating', 'potential', 'crossing', 'finishing', 
+                                           'heading', 'passing', 'dribbling', 'curve', 
+                                           'accuracy', 'control', 'acceleration', 'speed',
+                                           'agility', 'reactions', 'balance', 'power',
+                                           'jumping', 'stamina', 'strength', 'shots',
+                                           'aggression', 'interceptions', 'positioning',
+                                           'vision', 'penalties', 'marking', 'tackle',
+                                           'diving', 'handling', 'kicking', 'positioning',
+                                           'reflexes'])]
     
     # Verify player stats
-    assert len(player_rating_cols) == 22, f"Expected 22 player ratings, got {len(player_rating_cols)}"
-    assert len(player_potential_cols) == 22, f"Expected 22 player potentials, got {len(player_potential_cols)}"
+    #assert len(player_rating_cols) == 22, f"Expected 22 player ratings, got {len(player_rating_cols)}"
+    #assert len(player_potential_cols) == 22, f"Expected 22 player potentials, got {len(player_potential_cols)}"
     
     # Other features
     team_record_cols = [
@@ -38,7 +50,7 @@ def get_shared_components(df, device, input_tensor=True, test_year=2016):
         "away_team_wins", "away_team_draws", "away_team_losses"
     ]
     metadata_cols = ["stage", "league_id"]
-    features = player_rating_cols + player_potential_cols + team_record_cols + metadata_cols
+    features = player_attr_cols + team_record_cols + metadata_cols
     
     # Handle missing values safely
     median_values = train[features].median()
