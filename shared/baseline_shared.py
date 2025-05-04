@@ -6,29 +6,29 @@ import pandas as pd
 import numpy as np
 
 def get_shared_components(df, device, input_tensor=True, test_year=2016):
-    # Define target function
+    # Class definitions
     def get_result_class(row):
         if row["home_team_goal"] > row["away_team_goal"]:
-            return 0  # home win
+            # Home win
+            return 0 
         elif row["home_team_goal"] == row["away_team_goal"]:
-            return 1  # draw
+            # Draw
+            return 1  
         else:
-            return 2  # away win
+            # Away win
+            return 2 
 
-    # Convert date and create clean copies to avoid warnings
+    # Date conversion
     df = df.copy() 
     df['match_date'] = pd.to_datetime(df['match_date'])
     df = df[df['match_date'].notna()].copy()  
     
-    # Temporal split with explicit copies
+    # Temporal split on 2016
     train = df[df['match_date'].dt.year < test_year].copy()
     test = df[df['match_date'].dt.year == test_year].copy()
     
     
-    # Extract features safely
-    #player_rating_cols = [col for col in df.columns if "rating" in col and "player" in col]
-    #player_potential_cols = [col for col in df.columns if "potential" in col and "player" in col]
-
+    # Extract features
     player_attr_cols = [col for col in df.columns 
                    if any(x in col for x in ['rating', 'potential', 'crossing', 'finishing', 
                                            'heading', 'passing', 'dribbling', 'curve', 
@@ -40,10 +40,6 @@ def get_shared_components(df, device, input_tensor=True, test_year=2016):
                                            'diving', 'handling', 'kicking', 'positioning',
                                            'reflexes'])]
     
-    # Verify player stats
-    #assert len(player_rating_cols) == 22, f"Expected 22 player ratings, got {len(player_rating_cols)}"
-    #assert len(player_potential_cols) == 22, f"Expected 22 player potentials, got {len(player_potential_cols)}"
-    
     # Other features
     team_record_cols = [
         "home_team_wins", "home_team_draws", "home_team_losses",
@@ -52,17 +48,17 @@ def get_shared_components(df, device, input_tensor=True, test_year=2016):
     metadata_cols = ["stage", "league_id"]
     features = player_attr_cols + team_record_cols + metadata_cols
     
-    # Handle missing values safely
+    # Missing values
     median_values = train[features].median()
     train.loc[:, features] = train[features].fillna(median_values)
     test.loc[:, features] = test[features].fillna(median_values)
     
-    # Bookmaker probabilities
+    # Bookmaker cols probabilities
     bookmaker_cols = ["avg_home_prob", "avg_draw_prob", "avg_away_prob"]
     bookie_probs_train = train[bookmaker_cols].values
     bookie_probs_test = test[bookmaker_cols].values
     
-    # Create targets
+    # Targets
     y_train = train.apply(get_result_class, axis=1)
     y_test = test.apply(get_result_class, axis=1)
     
@@ -71,15 +67,15 @@ def get_shared_components(df, device, input_tensor=True, test_year=2016):
     X_train = scaler.fit_transform(train[features])
     X_test = scaler.transform(test[features])
     
-    # Convert to tensors
-    if input_tensor:
-        X_train = torch.FloatTensor(X_train).to(device)
-        X_test = torch.FloatTensor(X_test).to(device)
-        y_train = torch.LongTensor(y_train.values).to(device)
-        y_test = torch.LongTensor(y_test.values).to(device)
-        bookie_train = torch.FloatTensor(bookie_probs_train).to(device)
-        bookie_test = torch.FloatTensor(bookie_probs_test).to(device)
+    # Tensors
+    X_train = torch.FloatTensor(X_train).to(device)
+    X_test = torch.FloatTensor(X_test).to(device)
+    y_train = torch.LongTensor(y_train.values).to(device)
+    y_test = torch.LongTensor(y_test.values).to(device)
+    bookie_train = torch.FloatTensor(bookie_probs_train).to(device)
+    bookie_test = torch.FloatTensor(bookie_probs_test).to(device)
     
+    # Return common features
     return {
         'X_train': X_train,
         'X_test': X_test,
