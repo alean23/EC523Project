@@ -31,7 +31,7 @@ The code for each model can be found in its folder. Shared code for preprocessin
 
 Instructions to run and use code:
 
-You will need to install PyTorch to run any of the models. For the Mamba model you will need to install mamba: https://mamba.readthedocs.io/en/latest/installation/mamba-installation.html
+You will need to install PyTorch to run any of the models. For the Mamba model you will need to install mamba: https://pypi.org/project/mamba-ssm/
 
 To run each of the models, simply run the corresponding file in the folder for that model. Each file will train the model, and run the same testing criteria on each model.
 
