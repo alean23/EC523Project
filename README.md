@@ -42,7 +42,7 @@ To run each of the models, simply run the corresponding file in the folder for t
 3. KL divergence between predicted odds and average sportsbook odds
 4. Kelly Criteria Betting Performance (Attempts to bet on testing data using an optimal strategy and measures ROI).
 
-##Model Performance
+## Model Performance
 
 <img width="329" alt="image" src="https://github.com/user-attachments/assets/f64c8c23-7119-4101-a972-ee64a782b89c" />
 
